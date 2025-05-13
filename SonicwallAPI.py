@@ -4,8 +4,6 @@ from collections import OrderedDict
 import time
 import urllib3
 
-"test"
-
 
 ip="192.168.168.168"
 port="443"
