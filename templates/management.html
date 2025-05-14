@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Management</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        /* Sidebar Styling */
+        .sidebar {
+            position: fixed;
+            right: 0px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 300px;
+            height: 80vh;
+            background-color: #343a40;
+            color: white;
+            padding: 15px;
+            transition: width 0.3s ease-in-out;
+            z-index: 1050;
+            overflow-y: auto;
+        }
+
+        .sidebar.collapsed {
+            width: 50px; /* Keeps sidebar visible */
+            padding: 5px;
+        }
+
+        /* Attach toggle button to the inside left of the sidebar */
+        .sidebar-toggle {
+            position: absolute;
+            left: 0px; /* Attach to the left edge */
+            top: 50%;
+            transform: translateY(-50%);
+            width: 40px;
+            height: 40px;
+            background-color: #007bff;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 1051;
+            font-size: 20px;
+            transition: background 0.3s ease-in-out;
+        }
+
+
+
+
+        .sidebar.collapsed .sidebar-toggle {
+            left: 0px; /* Adjust to keep the icon visible */
+        }
+
+        .sidebar-toggle:hover {
+            background-color: #0056b3;
+        }
+
+        .container {
+            margin-top: 100px; /* Prevents header overlap */
+        }
+    </style>
+</head>
+<body>
+    {% include 'header.html' %}
+
+    <div class="container">
+        <h2 class="text-center mt-4">Device Management</h2>
+        
+        <!-- Push Default Configuration -->
+        <div class="text-center mt-3">
+            <form method="POST" action="{{ url_for('push_base_config') }}">
+                <button type="submit" class="btn btn-primary">Push Default Base Configuration</button>
+            </form>
+        </div>
+
+        <!-- Compare Configuration -->
+        <div class="mt-5">
+            <h4>Configuration Differences</h4>
+            <form method="POST" action="{{ url_for('compare_config') }}">
+                <button type="submit" class="btn btn-secondary">Check Differences</button>
+            </form>
+            <div class="mt-3">
+                {% if config_differences %}
+                    <pre>{{ config_differences }}</pre>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar collapsed" id="sidebar">
+        <div class="sidebar-toggle" onclick="toggleSidebar()">&#x3C;</div> <!-- '<' icon -->
+
+        <div class="sidebar-header">
+            <h4>Device Information</h4>
+        </div>
+        {% if session['logged_in'] and session['device_info'] %}
+            <table class="table table-dark table-bordered mt-3">
+                <tr><th>Serial Number</th><td>{{ session['device_info'].serial_number }}</td></tr>
+                <tr><th>System Time</th><td>{{ session['device_info'].system_time }}</td></tr>
+                <tr><th>System Uptime</th><td>{{ session['device_info'].system_uptime }}</td></tr>
+                <tr><th>Last Modified By</th><td>{{ session['device_info'].last_modified_by }}</td></tr>
+            </table>
+        {% endif %}
+    </div>
+
+    <script>
+function toggleSidebar() {
+    let sidebar = document.getElementById("sidebar");
+    let toggleBtn = sidebar.querySelector(".sidebar-toggle");
+
+    if (sidebar.classList.contains("collapsed")) {
+        sidebar.classList.remove("collapsed");
+        sidebar.style.width = "300px"; // Expand
+        toggleBtn.innerHTML = "&#x3E;"; // Change to '>'
+        toggleBtn.style.left = "0px"; // Stay attached to left edge
+    } else {
+        sidebar.classList.add("collapsed");
+        sidebar.style.width = "50px"; // Keep slightly visible
+        toggleBtn.innerHTML = "&#x3C;"; // Change to '<'
+        toggleBtn.style.left = "0px"; // Always stays attached to left edge
+    }
+}
+
+    </script>
+</body>
+</html>

@@ -3,10 +3,13 @@ import json
 from collections import OrderedDict
 import time
 import urllib3
+import re
+
 
 
 ip="192.168.168.168"
 port="443"
+
 username="admin"
 password="password"
 
@@ -124,7 +127,7 @@ class SonicAPIClass:
                         "name": interface_name
 
                         ,"ip_assignment": {
-                            "zone": "LAN"
+                            "zone": zone
 
                             ,"mode": {
                                 "static": {
@@ -138,16 +141,16 @@ class SonicAPIClass:
                         ,"comment": "ESTING"
 
                         ,"management": {
-                            "https": True
-                            ,"ping": True
-                            ,"snmp": True
-                            ,"ssh": True
+                            "https": enable_https
+                            ,"ping": enable_ping
+                            ,"snmp": enable_snmp
+                            ,"ssh": enable_ssh
                             ,"fqdn_assignment": ""
                         }
 
                         ,"user_login": {
-                            "http": True
-                            ,"https": True
+                            "http": user_login_http
+                            ,"https": user_login_https
                         }
 
                         
@@ -163,7 +166,7 @@ class SonicAPIClass:
                         ,"shutdown_port": False
                         ,"auto_discovery": False
                         ,"flow_reporting": True
-                        ,"multicast": False
+                        ,"multicast": multicast
                         ,"cos_8021p": False
                         ,"exclude_route": False
                         ,"asymmetric_route": False
@@ -496,16 +499,28 @@ class SonicAPIClass:
         r = requests.get(url,json=config,auth=self.authinfo,headers=self.headers,verify=False)
         return r.status_code
 
-"""
-    def configure_anti_spyware(self):
-        endpoint = 'security-services/'
+
+    def get_device_info(self):
+        endpoint = 'version/'
         url = self.baseurl + endpoint
 
-        config = ""
+        r = requests.get(url, auth=self.authinfo, headers=self.headers, verify=False)
+        
+        if r.status_code == 200:
+            device_info = r.json()
+            firmware_full = device_info.get('firmware_version', 'Unknown')
 
-        r = requests.put(url,json=config,auth=self.authinfo,headers=self.headers,verify=False)
-        return r.status_code
-"""
+            # Extract only the last part of the firmware string
+            firmware_cleaned = firmware_full.split()[-1] if firmware_full != 'Unknown' else 'Unknown'
+
+            # Remove non-numeric characters while preserving dots (e.g., '6.5.4.8-89n' → '6.5.4.8')
+            numeric_firmware = re.sub(r'[^0-9.]', '', firmware_cleaned)
+
+            # Update the session with the cleaned version
+            device_info['firmware_version'] = numeric_firmware
+            return device_info
+        else:
+            return {"error": f"Failed to retrieve info, status code {r.status_code}"}    
 
 def authentication(firewall):
     authtry = 3
@@ -524,6 +539,8 @@ def authentication(firewall):
     if authStatus != 200:
         print("Exiting Program.")
         exit()
+    else:
+        return("Status " + str(authStatus) + " " + HTTPstatusCodes[str(authStatus)])
 
 def logout(firewall):
     print("\nLogging out from the firewall: ",end="")
@@ -550,54 +567,9 @@ def startconfig(firewall):
 firewall = SonicAPIClass(ip,port,username,password)
 authentication(firewall)
 
+firewall.get_device_info()
 
-#configStatus = firewall.configureInterface('X1','WAN','dhcp','AT&T',False,True,False,False,False,False)
-#print("Status " + str(configStatus) + " " + HTTPstatusCodes[str(configStatus)])
-
-#configStatus = firewall.configure_administration("firewall_name",80,443,60,True)
-#print("Status " + str(configStatus) + " " + HTTPstatusCodes[str(configStatus)])
-
-#configStatus = firewall.configure_sslvpn_server(4433)
-#print("Status " + str(configStatus) + " " + HTTPstatusCodes[str(configStatus)])
-
-#configStatus = firewall.configure_dhcp_server("VoIP_Option",132,False,"200")
-#print("Status " + str(configStatus) + " " + HTTPstatusCodes[str(configStatus)])
-
-#configStatus = firewall.configure_zone("Phonedsfs","public")
-#print("Status " + str(configStatus) + " " + HTTPstatusCodes[str(configStatus)])
-
-#configStatus = firewall.postIPv4AddressObjects("TEST","network","WAN",None,None,None,"104.156.6.0","255.255.255.248")
-#print("Status " + str(configStatus) + " " + HTTPstatusCodes[str(configStatus)])
-
-#configStatus = firewall.configure_access_rule("Test Rule",True,True,True,"Added by API TEST","WAN","WAN","allow","name","TEST","any",True,"name","SSH Management","group","All X1 Management IP","always_on",True,"all",True,"none",True)
-#print("Status " + str(configStatus) + " " + HTTPstatusCodes[str(configStatus)])
-
-
-#configStatus = firewall.configure_dhcp_server_base(True,True,True)
-#print("Status " + str(configStatus) + " " + HTTPstatusCodes[str(configStatus)])
-
-#configStatus = firewall.configure_ssl_control()
-#print("Status " + str(configStatus) + " " + HTTPstatusCodes[str(configStatus)])
-
-#configStatus = firewall.configure_time()
-#print("Status " + str(configStatus) + " " + HTTPstatusCodes[str(configStatus)])
-
-#configStatus = firewall.configure_firewall()
-#print("Status " + str(configStatus) + " " + HTTPstatusCodes[str(configStatus)])
-
-#configStatus = firewall.configure_security_services()
-#print("Status " + str(configStatus) + " " + HTTPstatusCodes[str(configStatus)])
-
-#configStatus = firewall.configure_failover_lb()
-#print("Status " + str(configStatus) + " " + HTTPstatusCodes[str(configStatus)])
-
-#configStatus = firewall.configure_realtime_blacklisting(True,"inherit","sbl-xbl.spamhaus.org",True,"block-all")
-#print("Status " + str(configStatus) + " " + HTTPstatusCodes[str(configStatus)])
-
-#configStatus = firewall.configure_realtime_blacklisting(True,"inherit","dnsbl.sorbs.net",True,"block-all")
-#print("Status " + str(configStatus) + " " + HTTPstatusCodes[str(configStatus)])
-
-
+'''
 ##################################### SCRIPT TESTING #################################
 
 configStatus = firewall.configureInterface("X0","LAN","static","AT&T",True,True,True,True,True,True,True,True,True)
@@ -614,3 +586,4 @@ ITEMS COMPLETE:
 
 ITEMS THAT NEED WORK:
 """
+'''

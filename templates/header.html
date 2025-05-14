@@ -1,0 +1,40 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+    <div class="container-fluid">
+        <a class="navbar-brand">SonicWall Management</a>
+        
+        {% if session['logged_in'] %}
+            <span class="text-light me-3">Model: {{ session['model'] }}</span>
+            <span class="text-light me-3">
+                Firmware: {{ session['firmware_version'] }}
+
+                {% if session['is_outdated'] %}
+                    <span class="outdated-indicator" title="Device is not on the standard firmware version">⚠️</span>
+                {% endif %}
+            </span>
+            
+            <a href="{{ url_for('disconnect') }}" class="btn btn-danger">Disconnect</a>
+        {% else %}
+            <a href="{{ url_for('login') }}" class="btn btn-success">Log In</a>
+        {% endif %}
+    </div>
+</nav>
+
+<style>
+    .outdated-indicator {
+        color: red;
+        font-weight: bold;
+        cursor: pointer;
+        margin-left: 5px;
+    }
+
+    .outdated-indicator:hover::after {
+        content: " Device is not on the standard firmware version";
+        position: absolute;
+        background-color: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 5px;
+        border-radius: 5px;
+        font-size: 14px;
+        margin-left: 10px;
+    }
+</style>
