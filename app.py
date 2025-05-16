@@ -1,6 +1,7 @@
-from flask import Flask, render_template, request, session, redirect, url_for
+from flask import Flask, render_template, request, session, redirect, url_for, jsonify
 from SonicwallAPI import SonicAPIClass, authentication
 from packaging import version
+
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Needed for session tracking
@@ -74,6 +75,14 @@ def compare_config():
         except Exception as e:
             return f"Error: {str(e)}"
     return redirect(url_for('login'))
+
+@app.route('/get_interfaces', methods=['GET'])
+def get_interfaces():
+    """Retrieve interface configuration and store it in session."""
+    firewall = SonicAPIClass()
+    session['interface_config'] = firewall.get_interface_configuration()
+    return jsonify(session['interface_config'])
+
 
 
 if __name__ == '__main__':

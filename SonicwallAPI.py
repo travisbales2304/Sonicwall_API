@@ -499,7 +499,6 @@ class SonicAPIClass:
         r = requests.get(url,json=config,auth=self.authinfo,headers=self.headers,verify=False)
         return r.status_code
 
-
     def get_device_info(self):
         endpoint = 'version/'
         url = self.baseurl + endpoint
@@ -521,6 +520,38 @@ class SonicAPIClass:
             return device_info
         else:
             return {"error": f"Failed to retrieve info, status code {r.status_code}"}    
+
+    def get_interface_configuration(self):
+        """Fetch interface configuration and extract relevant details."""
+        endpoint = 'interfaces/configuration/'
+        url = self.baseurl + endpoint
+
+        try:
+            r = requests.get(url, auth=self.authinfo, headers=self.headers, verify=False)
+
+            if r.status_code == 200:
+                interfaces_data = r.json()
+                extracted_interfaces = []
+
+                for interface in interfaces_data.get("interfaces", []):
+                    ipv4 = interface.get("ipv4", {})
+
+                    extracted_interfaces.append({
+                        "name": ipv4.get("name", "Unknown"),
+                        "management_options": ipv4.get("management", {}),
+                        "user_login_options": ipv4.get("user_login", {}),
+                        "https_redirect": ipv4.get("https_redirect", False),
+                        "multicast": ipv4.get("multicast", False),
+                    })
+
+                return {"interfaces": extracted_interfaces}
+            else:
+                return {"error": f"Failed to retrieve interface config, status code {r.status_code}"}
+        
+        except requests.exceptions.RequestException as err:
+            return {"error": f"Request failed: {err}"}
+
+
 
 def authentication(firewall):
     authtry = 3
@@ -564,10 +595,26 @@ def startconfig(firewall):
     print("Status " + str(configStatus) + " " + HTTPstatusCodes[str(configStatus)])
 
 
-firewall = SonicAPIClass(ip,port,username,password)
-authentication(firewall)
 
-firewall.get_device_info()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#firewall = SonicAPIClass(ip,port,username,password)
+#authentication(firewall)
+
+#firewall.get_device_info()
 
 '''
 ##################################### SCRIPT TESTING #################################
