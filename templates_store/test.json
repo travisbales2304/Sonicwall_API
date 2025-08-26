@@ -1,0 +1,32 @@
+{
+  "administration": {
+    "firewall_name": "Default Name",
+    "http_port": 80,
+    "https_port": 443,
+    "idle_logout_time": 20
+  },
+  "zones": {
+    "LAN": {
+      "gateway_anti_virus": true,
+      "intrusion_prevention": true,
+      "anti_spyware": true,
+      "app_control": true,
+      "dpi_ssl_client": true,
+      "dpi_ssl_server": false,
+      "create_group_vpn": true,
+      "ssl_control": false,
+      "sslvpn_access": true
+    },
+    "WAN": {
+      "gateway_anti_virus": false,
+      "intrusion_prevention": true,
+      "anti_spyware": false,
+      "app_control": false,
+      "dpi_ssl_client": false,
+      "dpi_ssl_server": true,
+      "create_group_vpn": true,
+      "ssl_control": false,
+      "sslvpn_access": true
+    }
+  }
+}

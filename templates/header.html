@@ -1,21 +1,23 @@
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+<nav class="navbar navbar-expand-lg fixed-top shadow-sm">
     <div class="container-fluid">
-        <a class="navbar-brand">SonicWall Management</a>
-        
-        {% if session['logged_in'] %}
-            <span class="text-light me-3">Model: {{ session['model'] }}</span>
-            <span class="text-light me-3">
-                Firmware: {{ session['firmware_version'] }}
-
-                {% if session['is_outdated'] %}
-                    <span class="outdated-indicator" title="Device is not on the standard firmware version">⚠️</span>
-                {% endif %}
-            </span>
-            
-            <a href="{{ url_for('disconnect') }}" class="btn btn-danger">Disconnect</a>
-        {% else %}
-            <a href="{{ url_for('login') }}" class="btn btn-success">Log In</a>
-        {% endif %}
+        <a class="navbar-brand" href="/">SonicWall</a>
+        <div class="d-flex align-items-center ms-auto">
+            <a href="{{ url_for('config_builder') }}" class="btn btn-outline-secondary btn-sm me-2">Config Builder</a>
+            <a href="{{ url_for('select_default_template') }}" class="btn btn-outline-secondary btn-sm me-2">Default Template</a>
+            <a href="{{ url_for('management') }}" class="btn btn-outline-secondary btn-sm me-2">Management</a>
+            {% if session['logged_in'] %}
+                <span class="text-muted me-3 small">Model: {{ session['model'] }}</span>
+                <span class="text-muted me-3 small">
+                    Firmware: {{ session['firmware_version'] }}
+                    {% if session['is_outdated'] %}
+                        <span class="outdated-indicator" title="Device is not on the standard firmware version"> 0</span>
+                    {% endif %}
+                </span>
+                <a href="{{ url_for('disconnect') }}" class="btn btn-outline-danger btn-sm">Disconnect</a>
+            {% else %}
+                <a href="{{ url_for('login') }}" class="btn btn-outline-primary btn-sm">Log In</a>
+            {% endif %}
+        </div>
     </div>
 </nav>
 

@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Select Default Template | SonicWall{% endblock %}
+{% block content %}
+<div class="mx-auto mt-5" style="max-width: 500px;">
+    <div class="card p-4 mb-4">
+        <h4 class="mb-3 text-center">Select Default Configuration Template</h4>
+        <form method="POST">
+            <div class="mb-3">
+                <label class="form-label">Available Templates</label>
+                <select class="form-select" name="default_template" required>
+                    {% for t in templates %}
+                        <option value="{{ t }}" {% if t == current_default %}selected{% endif %}>{{ t }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3 text-end">
+                <button type="submit" class="btn btn-primary">Set as Default</button>
+            </div>
+        </form>
+        {% if current_default %}
+            <div class="alert alert-info mt-3 mb-0">
+                Current default: <strong>{{ current_default }}</strong>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 
