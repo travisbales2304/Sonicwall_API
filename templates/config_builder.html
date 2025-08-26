@@ -4,6 +4,9 @@
 <div class="mx-auto mt-5" style="max-width: 900px;">
     <div class="card p-4 mb-4">
         <h4 class="mb-3 text-center">Visual Configuration Builder</h4>
+        <p class="text-muted text-center mb-4">
+            Create and edit configuration templates for your SonicWall firewall. These templates define the expected configuration that will be checked against your firewall.
+        </p>
         <form class="mb-3" method="GET" action="">
             <div class="row align-items-end">
                 <div class="col-md-8">
@@ -42,25 +45,43 @@
                 </div>
             </div>
             <h5 class="mt-4">Zones</h5>
-            <div class="row">
-                <div class="col-md-6">
-                    <h6>LAN</h6>
-                    {% for key, value in zones.LAN.items() %}
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" name="lan_{{ key }}" id="lan_{{ key }}" {% if value %}checked{% endif %}>
-                            <label class="form-check-label" for="lan_{{ key }}">{{ key.replace('_', ' ').title() }}</label>
+            <div class="mb-3">
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="addZone()">
+                    <i class="fas fa-plus me-1"></i>Add Zone
+                </button>
+                <small class="text-muted ms-2">Add zones that should be checked during configuration comparison</small>
+            </div>
+            <div id="zones-list">
+                {% for zone_name, zone_settings in zones.items() %}
+                <div class="card mb-3 p-3" id="zone-{{ loop.index0 }}">
+                    <div class="row align-items-center mb-3">
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" name="zone_name_{{ loop.index0 }}" value="{{ zone_name }}" placeholder="Zone Name" required>
                         </div>
-                    {% endfor %}
-                </div>
-                <div class="col-md-6">
-                    <h6>WAN</h6>
-                    {% for key, value in zones.WAN.items() %}
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" name="wan_{{ key }}" id="wan_{{ key }}" {% if value %}checked{% endif %}>
-                            <label class="form-check-label" for="wan_{{ key }}">{{ key.replace('_', ' ').title() }}</label>
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-danger btn-sm" onclick="removeZone({{ loop.index0 }})">
+                                <i class="fas fa-trash"></i> Remove
+                            </button>
                         </div>
-                    {% endfor %}
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Security Settings</h6>
+                            {% for key, value in zone_settings.items() %}
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" 
+                                           name="zone_{{ loop.index0 }}_{{ key }}" 
+                                           id="zone_{{ loop.index0 }}_{{ key }}" 
+                                           {% if value %}checked{% endif %}>
+                                    <label class="form-check-label" for="zone_{{ loop.index0 }}_{{ key }}">
+                                        {{ key.replace('_', ' ').title() }}
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
                 </div>
+                {% endfor %}
             </div>
             <h5 class="mt-4">Interfaces</h5>
             <div id="interfaces-list"></div>
@@ -448,6 +469,72 @@ function removeDhcpOption(idx) {
     const el = document.getElementById(`dhcp-option-${idx}`);
     if (el) el.remove();
 }
+// Zones functionality
+let zoneCount = 0;
+function addZone() {
+    const container = document.getElementById('zones-list');
+    const idx = zoneCount++;
+    const html = `
+    <div class="card mb-3 p-3" id="zone-${idx}">
+        <div class="row align-items-center mb-3">
+            <div class="col-md-4">
+                <input type="text" class="form-control" name="zone_name_${idx}" placeholder="Zone Name" required>
+            </div>
+            <div class="col-md-2">
+                <button type="button" class="btn btn-danger btn-sm" onclick="removeZone(${idx})">
+                    <i class="fas fa-trash"></i> Remove
+                </button>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <h6 class="text-muted">Security Settings</h6>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="zone_${idx}_gateway_anti_virus" id="zone_${idx}_gateway_anti_virus">
+                    <label class="form-check-label" for="zone_${idx}_gateway_anti_virus">Gateway Anti Virus</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="zone_${idx}_intrusion_prevention" id="zone_${idx}_intrusion_prevention">
+                    <label class="form-check-label" for="zone_${idx}_intrusion_prevention">Intrusion Prevention</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="zone_${idx}_anti_spyware" id="zone_${idx}_anti_spyware">
+                    <label class="form-check-label" for="zone_${idx}_anti_spyware">Anti Spyware</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="zone_${idx}_app_control" id="zone_${idx}_app_control">
+                    <label class="form-check-label" for="zone_${idx}_app_control">App Control</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="zone_${idx}_dpi_ssl_client" id="zone_${idx}_dpi_ssl_client">
+                    <label class="form-check-label" for="zone_${idx}_dpi_ssl_client">DPI SSL Client</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="zone_${idx}_dpi_ssl_server" id="zone_${idx}_dpi_ssl_server">
+                    <label class="form-check-label" for="zone_${idx}_dpi_ssl_server">DPI SSL Server</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="zone_${idx}_create_group_vpn" id="zone_${idx}_create_group_vpn">
+                    <label class="form-check-label" for="zone_${idx}_create_group_vpn">Create Group VPN</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="zone_${idx}_ssl_control" id="zone_${idx}_ssl_control">
+                    <label class="form-check-label" for="zone_${idx}_ssl_control">SSL Control</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="zone_${idx}_sslvpn_access" id="zone_${idx}_sslvpn_access">
+                    <label class="form-check-label" for="zone_${idx}_sslvpn_access">SSL VPN Access</label>
+                </div>
+            </div>
+        </div>
+    </div>`;
+    container.insertAdjacentHTML('beforeend', html);
+}
+
+function removeZone(idx) {
+    const el = document.getElementById(`zone-${idx}`);
+    if (el) el.remove();
+}
 </script>
 <script>
 // Pre-populate Address Objects if editing a template
@@ -490,6 +577,71 @@ window.addEventListener('DOMContentLoaded', function() {
                     </div>
                     <div class="col-12 col-md-1 mb-2 d-flex align-items-center">
                         <button type="button" class="btn btn-danger btn-sm" onclick="removeAddressObject(${idx})">&times;</button>
+                    </div>
+                </div>
+            </div>`;
+            container.insertAdjacentHTML('beforeend', html);
+        });
+    }
+    
+    // Pre-populate Zones if editing a template
+    var zones = {{ (template_data.zones or {})|tojson|safe }};
+    if (Object.keys(zones).length > 0) {
+        Object.keys(zones).forEach(function(zoneName, index) {
+            var zoneSettings = zones[zoneName];
+            var container = document.getElementById('zones-list');
+            var idx = typeof zoneCount !== 'undefined' ? zoneCount++ : index;
+            var html = `
+            <div class="card mb-3 p-3" id="zone-${idx}">
+                <div class="row align-items-center mb-3">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" name="zone_name_${idx}" value="${zoneName}" placeholder="Zone Name" required>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-danger btn-sm" onclick="removeZone(${idx})">
+                            <i class="fas fa-trash"></i> Remove
+                        </button>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Security Settings</h6>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="zone_${idx}_gateway_anti_virus" id="zone_${idx}_gateway_anti_virus" ${zoneSettings.gateway_anti_virus ? 'checked' : ''}>
+                            <label class="form-check-label" for="zone_${idx}_gateway_anti_virus">Gateway Anti Virus</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="zone_${idx}_intrusion_prevention" id="zone_${idx}_intrusion_prevention" ${zoneSettings.intrusion_prevention ? 'checked' : ''}>
+                            <label class="form-check-label" for="zone_${idx}_intrusion_prevention">Intrusion Prevention</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="zone_${idx}_anti_spyware" id="zone_${idx}_anti_spyware" ${zoneSettings.anti_spyware ? 'checked' : ''}>
+                            <label class="form-check-label" for="zone_${idx}_anti_spyware">Anti Spyware</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="zone_${idx}_app_control" id="zone_${idx}_app_control" ${zoneSettings.app_control ? 'checked' : ''}>
+                            <label class="form-check-label" for="zone_${idx}_app_control">App Control</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="zone_${idx}_dpi_ssl_client" id="zone_${idx}_dpi_ssl_client" ${zoneSettings.dpi_ssl_client ? 'checked' : ''}>
+                            <label class="form-check-label" for="zone_${idx}_dpi_ssl_client">DPI SSL Client</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="zone_${idx}_dpi_ssl_server" id="zone_${idx}_dpi_ssl_server" ${zoneSettings.dpi_ssl_server ? 'checked' : ''}>
+                            <label class="form-check-label" for="zone_${idx}_dpi_ssl_server">DPI SSL Server</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="zone_${idx}_create_group_vpn" id="zone_${idx}_create_group_vpn" ${zoneSettings.create_group_vpn ? 'checked' : ''}>
+                            <label class="form-check-label" for="zone_${idx}_create_group_vpn">Create Group VPN</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="zone_${idx}_ssl_control" id="zone_${idx}_ssl_control" ${zoneSettings.ssl_control ? 'checked' : ''}>
+                            <label class="form-check-label" for="zone_${idx}_ssl_control">SSL Control</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="zone_${idx}_sslvpn_access" id="zone_${idx}_sslvpn_access" ${zoneSettings.sslvpn_access ? 'checked' : ''}>
+                            <label class="form-check-label" for="zone_${idx}_sslvpn_access">SSL VPN Access</label>
+                        </div>
                     </div>
                 </div>
             </div>`;

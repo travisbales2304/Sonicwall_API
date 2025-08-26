@@ -1,27 +1,84 @@
 {% extends 'base.html' %}
 {% block title %}Select Default Template | SonicWall{% endblock %}
 {% block content %}
-<div class="mx-auto mt-5" style="max-width: 500px;">
+<div class="mx-auto mt-5" style="max-width: 800px;">
     <div class="card p-4 mb-4">
         <h4 class="mb-3 text-center">Select Default Configuration Template</h4>
+        <p class="text-muted text-center mb-4">
+            Choose a template to use as the default for configuration checking. This template will be used to compare against your firewall's current configuration.
+        </p>
+        
         <form method="POST">
-            <div class="mb-3">
-                <label class="form-label">Available Templates</label>
-                <select class="form-select" name="default_template" required>
+            <div class="mb-4">
+                <label class="form-label fw-bold">Available Templates</label>
+                <select class="form-select form-select-lg" name="default_template" required>
+                    <option value="">-- Select a template to set as default --</option>
                     {% for t in templates %}
                         <option value="{{ t }}" {% if t == current_default %}selected{% endif %}>{{ t }}</option>
                     {% endfor %}
                 </select>
+                <div class="form-text">
+                    Select a template that matches your desired firewall configuration. The template will be used to check zones, address objects, and other settings.
+                </div>
             </div>
-            <div class="mb-3 text-end">
-                <button type="submit" class="btn btn-primary">Set as Default</button>
+            
+            <div class="mb-4">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="fas fa-save me-2"></i>Set as Default Template
+                </button>
+                <a href="{{ url_for('config_builder') }}" class="btn btn-outline-secondary btn-lg ms-2">
+                    <i class="fas fa-edit me-2"></i>Create New Template
+                </a>
             </div>
         </form>
+        
         {% if current_default %}
-            <div class="alert alert-info mt-3 mb-0">
-                Current default: <strong>{{ current_default }}</strong>
+            <div class="alert alert-success mt-4 mb-0">
+                <i class="fas fa-check-circle me-2"></i>
+                <strong>Current default template:</strong> {{ current_default }}
+                <br>
+                <small class="text-muted">This template will be used for configuration comparison checks.</small>
+            </div>
+        {% else %}
+            <div class="alert alert-warning mt-4 mb-0">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>No default template selected.</strong>
+                <br>
+                <small class="text-muted">Please select a template to enable configuration checking.</small>
             </div>
         {% endif %}
+        
+        <div class="mt-4">
+            <h6 class="fw-bold">Template Information:</h6>
+            <ul class="list-unstyled">
+                <li><i class="fas fa-info-circle text-info me-2"></i>Templates define expected zones, address objects, and security settings</li>
+                <li><i class="fas fa-shield-alt text-success me-2"></i>Configuration checks will compare your firewall against the selected template</li>
+                <li><i class="fas fa-edit text-warning me-2"></i>You can edit templates or create new ones in the Config Builder</li>
+            </ul>
+        </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add some interactivity
+    const templateSelect = document.querySelector('select[name="default_template"]');
+    const submitBtn = document.querySelector('button[type="submit"]');
+    
+    templateSelect.addEventListener('change', function() {
+        if (this.value) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-save me-2"></i>Set "' + this.value + '" as Default';
+        } else {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-save me-2"></i>Set as Default Template';
+        }
+    });
+    
+    // Initialize button state
+    if (!templateSelect.value) {
+        submitBtn.disabled = true;
+    }
+});
+</script>
 {% endblock %} 

@@ -48,7 +48,6 @@ def login():
                 'password': str(password or '')
             }
             device_info = firewall.get_device_info()
-            print(device_info)
             if 'error' not in device_info:
                 firmware_cleaned = device_info.get('firmware_version', 'Unknown')
                 session['firmware_version'] = firmware_cleaned
@@ -102,30 +101,7 @@ def config_builder():
         'https_port': 443,
         'idle_logout_time': 20
     }
-    zones_defaults = {
-        'LAN': {
-            'gateway_anti_virus': True,
-            'intrusion_prevention': True,
-            'anti_spyware': True,
-            'app_control': True,
-            'dpi_ssl_client': True,
-            'dpi_ssl_server': False,
-            'create_group_vpn': False,
-            'ssl_control': False,
-            'sslvpn_access': True
-        },
-        'WAN': {
-            'gateway_anti_virus': False,
-            'intrusion_prevention': True,
-            'anti_spyware': False,
-            'app_control': False,
-            'dpi_ssl_client': False,
-            'dpi_ssl_server': True,
-            'create_group_vpn': True,
-            'ssl_control': False,
-            'sslvpn_access': True
-        }
-    }
+    zones_defaults = {}
     template_data = None
     if template_name:
         template_path = os.path.join(TEMPLATE_STORE, f'{template_name}.json')
@@ -160,30 +136,7 @@ def save_template():
             'https_port': int(request.form.get('https_port', 443)),
             'idle_logout_time': int(request.form.get('idle_logout_time', 20))
         },
-        'zones': {
-            'LAN': {
-                'gateway_anti_virus': bool(request.form.get('lan_gateway_anti_virus')),
-                'intrusion_prevention': bool(request.form.get('lan_intrusion_prevention')),
-                'anti_spyware': bool(request.form.get('lan_anti_spyware')),
-                'app_control': bool(request.form.get('lan_app_control')),
-                'dpi_ssl_client': bool(request.form.get('lan_dpi_ssl_client')),
-                'dpi_ssl_server': bool(request.form.get('lan_dpi_ssl_server')),
-                'create_group_vpn': bool(request.form.get('lan_create_group_vpn')),
-                'ssl_control': bool(request.form.get('lan_ssl_control')),
-                'sslvpn_access': bool(request.form.get('lan_sslvpn_access'))
-            },
-            'WAN': {
-                'gateway_anti_virus': bool(request.form.get('wan_gateway_anti_virus')),
-                'intrusion_prevention': bool(request.form.get('wan_intrusion_prevention')),
-                'anti_spyware': bool(request.form.get('wan_anti_spyware')),
-                'app_control': bool(request.form.get('wan_app_control')),
-                'dpi_ssl_client': bool(request.form.get('wan_dpi_ssl_client')),
-                'dpi_ssl_server': bool(request.form.get('wan_dpi_ssl_server')),
-                'create_group_vpn': bool(request.form.get('wan_create_group_vpn')),
-                'ssl_control': bool(request.form.get('wan_ssl_control')),
-                'sslvpn_access': bool(request.form.get('wan_sslvpn_access'))
-            }
-        },
+        'zones': {},
         # Address Objects and other sections should be parsed and added here
     }
     # Parse address objects from dynamic form fields
@@ -204,6 +157,28 @@ def save_template():
             address_objects.append(obj)
     if address_objects:
         config['address_objects'] = address_objects
+    
+    # Parse zones from dynamic form fields
+    zones = {}
+    for key in request.form:
+        if key.startswith('zone_name_'):
+            idx = key.split('_')[-1]
+            zone_name = request.form.get(f'zone_name_{idx}')
+            if zone_name:  # Only add if zone name is provided
+                zones[zone_name] = {
+                    'gateway_anti_virus': bool(request.form.get(f'zone_{idx}_gateway_anti_virus')),
+                    'intrusion_prevention': bool(request.form.get(f'zone_{idx}_intrusion_prevention')),
+                    'anti_spyware': bool(request.form.get(f'zone_{idx}_anti_spyware')),
+                    'app_control': bool(request.form.get(f'zone_{idx}_app_control')),
+                    'dpi_ssl_client': bool(request.form.get(f'zone_{idx}_dpi_ssl_client')),
+                    'dpi_ssl_server': bool(request.form.get(f'zone_{idx}_dpi_ssl_server')),
+                    'create_group_vpn': bool(request.form.get(f'zone_{idx}_create_group_vpn')),
+                    'ssl_control': bool(request.form.get(f'zone_{idx}_ssl_control')),
+                    'sslvpn_access': bool(request.form.get(f'zone_{idx}_sslvpn_access'))
+                }
+    if zones:
+        config['zones'] = zones
+    
     # Parse interfaces from dynamic form fields
     interfaces = []
     for key in request.form:
@@ -264,6 +239,8 @@ def config_check():
         # Administration
         try:
             admin_actual = firewall.get_configure_administration()
+            print(f"DEBUG - Full admin response: {admin_actual}")
+            
             if default_template and 'administration' in default_template:
                 admin_expected = default_template['administration']
             else:
@@ -273,9 +250,11 @@ def config_check():
                     'https_port': 443,
                     'idle_logout_time': 20
                 }
+            
             admin_section = {'name': 'Administration', 'matches': True, 'items': []}
             for key, expected in admin_expected.items():
                 actual = admin_actual.get('administration', {}).get(key)
+                print(f"DEBUG - Key: {key}, Expected: {expected}, Actual: {actual}")
                 match = (actual == expected)
                 admin_section['items'].append({'key': key, 'expected': expected, 'actual': actual, 'match': match})
                 if not match:
@@ -286,11 +265,17 @@ def config_check():
         # Zones
         try:
             zones_actual = firewall.get_zone_config()
+            
+            # Zone checking now includes granular settings verification
+            # Checks for zone existence and compares all security settings against template expectations
+            
+            # Get expected zones from template or use default
             if default_template and 'zones' in default_template:
                 zones_expected = default_template['zones']
             else:
+                # Default zones to check if no template is specified
                 zones_expected = {
-                    'LAN': {
+                    'DMZ': {
                         'gateway_anti_virus': True,
                         'intrusion_prevention': True,
                         'anti_spyware': True,
@@ -300,30 +285,59 @@ def config_check():
                         'create_group_vpn': False,
                         'ssl_control': False,
                         'sslvpn_access': True
-                    },
-                    'WAN': {
-                        'gateway_anti_virus': False,
-                        'intrusion_prevention': True,
-                        'anti_spyware': False,
-                        'app_control': False,
-                        'dpi_ssl_client': False,
-                        'dpi_ssl_server': True,
-                        'create_group_vpn': True,
-                        'ssl_control': False,
-                        'sslvpn_access': True
                     }
                 }
+            
+            # Check each expected zone
+            for expected_zone_name, expected_settings in zones_expected.items():
+                found_zone = False
+                
+                for zone in zones_actual.get('zones', []):
+                    name = zone.get('name')
+                    if name == expected_zone_name:
+                        found_zone = True
+                        section = {'name': f'Zone: {name}', 'matches': True, 'items': []}
+                        
+                        # Check zone existence
+                        section['items'].append({'key': 'exists', 'expected': True, 'actual': True, 'match': True})
+                        
+                        # Check each security setting
+                        for setting_key, expected_value in expected_settings.items():
+                            actual_value = zone.get(setting_key, False)
+                            match = (actual_value == expected_value)
+                            section['items'].append({
+                                'key': setting_key.replace('_', ' ').title(), 
+                                'expected': expected_value, 
+                                'actual': actual_value, 
+                                'match': match
+                            })
+                            if not match:
+                                section['matches'] = False
+                        
+                        results.append(section)
+                        break
+                
+                if not found_zone:
+                    results.append({'name': f'Zone: {expected_zone_name}', 'matches': False, 'items': [{'key': 'exists', 'expected': True, 'actual': False, 'match': False}]})
+            
+            # Also show all zones that exist on the firewall (for informational purposes)
+            all_zones_found = []
             for zone in zones_actual.get('zones', []):
-                name = zone.get('name')
-                if name in zones_expected:
-                    section = {'name': f'Zone: {name}', 'matches': True, 'items': []}
-                    for key, expected in zones_expected[name].items():
-                        actual = zone.get(key)
-                        match = (actual == expected)
-                        section['items'].append({'key': key, 'expected': expected, 'actual': actual, 'match': match})
-                        if not match:
-                            section['matches'] = False
-                    results.append(section)
+                zone_name = zone.get('name', 'Unknown')
+                all_zones_found.append(zone_name)
+            
+            if all_zones_found:
+                # Add a summary of all zones found
+                results.append({
+                    'name': 'All Zones Found', 
+                    'matches': True, 
+                    'items': [{
+                        'key': 'zones', 
+                        'expected': 'List of all zones', 
+                        'actual': ', '.join(all_zones_found), 
+                        'match': True
+                    }]
+                })
         except SonicwallAPIError as e:
             results.append({'name': 'Zones', 'matches': False, 'items': [{'key': 'error', 'expected': 'Available', 'actual': str(e), 'match': False}]})
 
@@ -456,13 +470,62 @@ def config_check():
         except SonicwallAPIError as e:
             results.append({'name': 'Device Info', 'matches': False, 'items': [{'key': 'error', 'expected': 'Available', 'actual': str(e), 'match': False}]})
 
-        print('CONFIG CHECK RESULTS:', results)
+        # Remove debug printing
         return render_template('config_check.html', results=results)
     except Exception as e:
         import traceback
         print('Error in /config_check:', e)
         traceback.print_exc()
         return f"Internal Server Error: {e}", 500
+
+@app.route('/fix_configuration', methods=['POST'])
+def fix_configuration():
+    if 'logged_in' not in session:
+        return jsonify({'success': False, 'error': 'Not logged in'}), 401
+    
+    try:
+        data = request.get_json()
+        fix_type = data.get('fix_type')
+        new_value = data.get('new_value')
+        
+        if not fix_type or new_value is None:
+            return jsonify({'success': False, 'error': 'Missing fix_type or new_value'}), 400
+        
+        host, port, username, password = get_api_credentials()
+        firewall = SonicwallAPI(host, port, username, password)
+        
+        if fix_type == 'firewall_name':
+            # Update firewall name
+            result = firewall.update_firewall_name(new_value)
+        elif fix_type == 'http_port':
+            # Update HTTP port
+            result = firewall.update_http_port(int(new_value))
+        elif fix_type == 'https_port':
+            # Update HTTPS port
+            result = firewall.update_https_port(int(new_value))
+        elif fix_type == 'idle_logout_time':
+            # Update idle logout time
+            result = firewall.update_idle_logout_time(int(new_value))
+        else:
+            return jsonify({'success': False, 'error': f'Unsupported fix type: {fix_type}'}), 400
+        
+        if result.get('success', False):
+            # Commit the changes
+            try:
+                commit_result = firewall.commit_changes()
+                if 'error' in commit_result:
+                    return jsonify({'success': False, 'error': f'Updated but failed to commit: {commit_result["error"]}'})
+                return jsonify({'success': True, 'message': result.get('message', 'Configuration updated and committed successfully')})
+            except Exception as commit_error:
+                return jsonify({'success': False, 'error': f'Updated but failed to commit: {str(commit_error)}'})
+        else:
+            return jsonify({'success': False, 'error': result.get('error', f'Failed to update {fix_type}')})
+            
+    except Exception as e:
+        import traceback
+        print('Error in /fix_configuration:', e)
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 if __name__ == '__main__':

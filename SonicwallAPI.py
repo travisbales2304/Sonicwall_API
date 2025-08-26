@@ -306,7 +306,7 @@ class SonicwallAPI:
     def configure_administration(
         self,
         firewall_name: str = 'Default Name',
-        http_port: int = 80,
+        http_port: Optional[int] = None,
         https_port: int = 443,
         idle_time: int = 20,
         enable_cloud_backup: bool = True
@@ -318,12 +318,221 @@ class SonicwallAPI:
         config = {
             "administration": {
                 "firewall_name": firewall_name,
-                "http_port": http_port,
                 "https_port": https_port,
                 "idle_logout_time": idle_time
             }
         }
+        
+        # Only include http_port if it's not None
+        if http_port is not None:
+            config["administration"]["http_port"] = http_port
+        
+        print(f"DEBUG - Sending config to API: {config}")
+            
         return self._request('PUT', endpoint, json=config)
+
+    def update_firewall_name(self, new_name: str) -> Dict[str, Any]:
+        """
+        Update only the firewall name.
+        Returns a dictionary with success status and optional error message.
+        """
+        try:
+            # Validate firewall name
+            if not new_name or not new_name.strip():
+                return {'success': False, 'error': 'Firewall name cannot be empty'}
+            
+            # Remove leading/trailing whitespace
+            new_name = new_name.strip()
+            
+            # Check for common restrictions
+            if len(new_name) > 32:  # Common limit for device names
+                return {'success': False, 'error': 'Firewall name must be 32 characters or less'}
+            
+            # Check for invalid characters (common restrictions)
+            invalid_chars = ['<', '>', '&', '"', "'", '\\', '/', '|', ':', ';', '*', '?']
+            for char in invalid_chars:
+                if char in new_name:
+                    return {'success': False, 'error': f'Firewall name contains invalid character: {char}'}
+            
+            # Get current values first to avoid "out of bounds" error
+            current_config = self.get_configure_administration()
+            print(f"DEBUG - Current config: {current_config}")
+            
+            # Use the exact same approach as the working configure_administration method
+            print(f"DEBUG - Using exact working method approach")
+            
+            # Get current values from the device to avoid "out of bounds" error
+            admin_config = current_config['administration']
+            current_https_port = admin_config.get('https_port', 443)
+            current_idle_time = admin_config.get('idle_logout_time', 20)
+            
+            print(f"DEBUG - Using current device values: https_port={current_https_port}, idle_time={current_idle_time}")
+            
+            # Use the exact same structure as your working configure_administration method
+            config = {
+                "administration": {
+                    "firewall_name": new_name,
+                    "https_port": current_https_port,
+                    "idle_logout_time": current_idle_time
+                }
+            }
+            
+            print(f"DEBUG - Sending config: {config}")
+            
+            # Use requests.put directly like the working method
+            url = self.baseurl + 'administration/global'
+            r = requests.put(url, json=config, auth=self.authinfo, headers=self.headers, verify=False)
+            print(f"DEBUG - Response status: {r.status_code}")
+            print(f"DEBUG - Response text: {r.text}")
+            
+            if r.status_code >= 400:
+                return {'success': False, 'error': f'HTTP {r.status_code}: {r.text}'}
+            
+            return {'success': True, 'message': f'Firewall name updated to "{new_name}"'}
+            
+        except Exception as e:
+            return {'success': False, 'error': f'Exception occurred: {str(e)}'}
+
+    def update_http_port(self, new_port: int) -> Dict[str, Any]:
+        """
+        Update the HTTP management port.
+        Returns a dictionary with success status and optional error message.
+        """
+        try:
+            # Validate port number
+            if not isinstance(new_port, int) or new_port < 1 or new_port > 65535:
+                return {'success': False, 'error': 'Port must be a number between 1 and 65535'}
+            
+            # Get current values first to avoid "out of bounds" error
+            current_config = self.get_configure_administration()
+            print(f"DEBUG - Current config: {current_config}")
+            
+            # Get current values from the device to avoid "out of bounds" error
+            admin_config = current_config['administration']
+            current_https_port = admin_config.get('https_port', 443)
+            current_idle_time = admin_config.get('idle_logout_time', 20)
+            
+            print(f"DEBUG - Using current device values: https_port={current_https_port}, idle_time={current_idle_time}")
+            
+            # Use the exact same structure as the working configure_administration method
+            config = {
+                "administration": {
+                    "firewall_name": admin_config.get('firewall_name', 'Default Name'),
+                    "http_port": new_port,
+                    "https_port": current_https_port,
+                    "idle_logout_time": current_idle_time
+                }
+            }
+            
+            print(f"DEBUG - Sending config: {config}")
+            
+            # Use requests.put directly like the working method
+            url = self.baseurl + 'administration/global'
+            r = requests.put(url, json=config, auth=self.authinfo, headers=self.headers, verify=False)
+            print(f"DEBUG - Response status: {r.status_code}")
+            print(f"DEBUG - Response text: {r.text}")
+            
+            if r.status_code >= 400:
+                return {'success': False, 'error': f'HTTP {r.status_code}: {r.text}'}
+            
+            return {'success': True, 'message': f'HTTP port updated to {new_port}'}
+            
+        except Exception as e:
+            return {'success': False, 'error': f'Exception occurred: {str(e)}'}
+
+    def update_https_port(self, new_port: int) -> Dict[str, Any]:
+        """
+        Update the HTTPS management port.
+        Returns a dictionary with success status and optional error message.
+        """
+        try:
+            # Validate port number
+            if not isinstance(new_port, int) or new_port < 1 or new_port > 65535:
+                return {'success': False, 'error': 'Port must be a number between 1 and 65535'}
+            
+            # Get current values first to avoid "out of bounds" error
+            current_config = self.get_configure_administration()
+            print(f"DEBUG - Current config: {current_config}")
+            
+            # Get current values from the device to avoid "out of bounds" error
+            admin_config = current_config['administration']
+            current_http_port = admin_config.get('http_port', 80)
+            current_idle_time = admin_config.get('idle_logout_time', 20)
+            
+            print(f"DEBUG - Using current device values: http_port={current_http_port}, idle_time={current_idle_time}")
+            
+            # Use the exact same structure as the working configure_administration method
+            config = {
+                "administration": {
+                    "firewall_name": admin_config.get('firewall_name', 'Default Name'),
+                    "http_port": current_http_port,
+                    "https_port": new_port,
+                    "idle_logout_time": current_idle_time
+                }
+            }
+            
+            print(f"DEBUG - Sending config: {config}")
+            
+            # Use requests.put directly like the working method
+            url = self.baseurl + 'administration/global'
+            r = requests.put(url, json=config, auth=self.authinfo, headers=self.headers, verify=False)
+            print(f"DEBUG - Response status: {r.status_code}")
+            print(f"DEBUG - Response text: {r.text}")
+            
+            if r.status_code >= 400:
+                return {'success': False, 'error': f'HTTP {r.status_code}: {r.text}'}
+            
+            return {'success': True, 'message': f'HTTPS port updated to {new_port}'}
+            
+        except Exception as e:
+            return {'success': False, 'error': f'Exception occurred: {str(e)}'}
+
+    def update_idle_logout_time(self, new_time: int) -> Dict[str, Any]:
+        """
+        Update the idle logout time.
+        Returns a dictionary with success status and optional error message.
+        """
+        try:
+            # Validate time value
+            if not isinstance(new_time, int) or new_time < 1 or new_time > 1440:
+                return {'success': False, 'error': 'Idle logout time must be a number between 1 and 1440 minutes'}
+            
+            # Get current values first to avoid "out of bounds" error
+            current_config = self.get_configure_administration()
+            print(f"DEBUG - Current config: {current_config}")
+            
+            # Get current values from the device to avoid "out of bounds" error
+            admin_config = current_config['administration']
+            current_http_port = admin_config.get('http_port', 80)
+            current_https_port = admin_config.get('https_port', 443)
+            
+            print(f"DEBUG - Using current device values: http_port={current_http_port}, https_port={current_https_port}")
+            
+            # Use the exact same structure as the working configure_administration method
+            config = {
+                "administration": {
+                    "firewall_name": admin_config.get('firewall_name', 'Default Name'),
+                    "http_port": current_http_port,
+                    "https_port": current_https_port,
+                    "idle_logout_time": new_time
+                }
+            }
+            
+            print(f"DEBUG - Sending config: {config}")
+            
+            # Use requests.put directly like the working method
+            url = self.baseurl + 'administration/global'
+            r = requests.put(url, json=config, auth=self.authinfo, headers=self.headers, verify=False)
+            print(f"DEBUG - Response status: {r.status_code}")
+            print(f"DEBUG - Response text: {r.text}")
+            
+            if r.status_code >= 400:
+                return {'success': False, 'error': f'HTTP {r.status_code}: {r.text}'}
+            
+            return {'success': True, 'message': f'Idle logout time updated to {new_time} minutes'}
+            
+        except Exception as e:
+            return {'success': False, 'error': f'Exception occurred: {str(e)}'}
 
     def configure_sslvpn_server(self, sslvpn_port: int) -> Any:
         """

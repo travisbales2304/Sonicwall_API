@@ -1,9 +1,9 @@
 {
   "administration": {
-    "firewall_name": "Default Name",
+    "firewall_name": "Example Firewall",
     "http_port": 80,
     "https_port": 443,
-    "idle_logout_time": 20
+    "idle_logout_time": 30
   },
   "zones": {
     "DMZ": {
@@ -16,6 +16,17 @@
       "create_group_vpn": false,
       "ssl_control": false,
       "sslvpn_access": true
+    },
+    "Guest_Network": {
+      "gateway_anti_virus": true,
+      "intrusion_prevention": true,
+      "anti_spyware": true,
+      "app_control": false,
+      "dpi_ssl_client": false,
+      "dpi_ssl_server": false,
+      "create_group_vpn": false,
+      "ssl_control": false,
+      "sslvpn_access": false
     },
     "IoT_Network": {
       "gateway_anti_virus": false,
@@ -31,10 +42,10 @@
   },
   "address_objects": [
     {
-      "name": "test",
+      "name": "DMZ_Server",
       "type": "host",
-      "zone": "WAN",
-      "host_ip": "192.168.154.23",
+      "zone": "DMZ",
+      "host_ip": "192.168.10.100",
       "range_begin": "",
       "range_end": "",
       "subnet": "",

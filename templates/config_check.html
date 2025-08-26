@@ -1,33 +1,465 @@
 {% extends 'base.html' %}
 {% block title %}Configuration Check | SonicWall{% endblock %}
+{% block head %}
+<style>
+    .config-row {
+        background: #fff;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 8px;
+        border: 1px solid #e5e7eb;
+        transition: all 0.2s ease;
+    }
+    
+    .config-row .row {
+        flex-wrap: wrap;
+    }
+    
+    .config-row .col-md-2,
+    .config-row .col-md-4 {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        hyphens: auto;
+    }
+    .config-row:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .config-row.mismatch {
+        border-left: 4px solid #ef4444;
+        background: #fef2f2;
+    }
+    .config-row.match {
+        border-left: 4px solid #22c55e;
+        background: #f0fdf4;
+    }
+    .config-label {
+        font-weight: 500;
+        color: #374151;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+    .config-value {
+        font-family: 'Courier New', monospace;
+        background: #f3f4f6;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.9em;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+    .status-badge {
+        font-size: 0.8em;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-weight: 500;
+    }
+    .fix-btn {
+        font-size: 0.8em;
+        padding: 4px 12px;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+    }
+    .fix-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .section-header {
+        background: #f8fafc;
+        padding: 12px 16px;
+        border-radius: 8px 8px 0 0;
+        border-bottom: 1px solid #e5e7eb;
+        margin-bottom: 0;
+    }
+    .section-content {
+        padding: 16px;
+    }
+    .modal-content {
+        border-radius: 12px;
+        border: none;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    }
+    .modal-header {
+        border-bottom: 1px solid #e5e7eb;
+        background: #f8fafc;
+        border-radius: 12px 12px 0 0;
+    }
+    .modal-footer {
+        border-top: 1px solid #e5e7eb;
+        background: #f8fafc;
+        border-radius: 0 0 12px 12px;
+    }
+    .alert-toast {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        min-width: 300px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+</style>
+{% endblock %}
 {% block content %}
-<div class="mx-auto mt-5" style="max-width: 700px;">
+<div class="container-fluid mt-5">
     <div class="card p-4 mb-4">
-        <h4 class="mb-3 text-center">Configuration Check Against Default</h4>
+        <h4 class="mb-3 text-center">Configuration Check Results</h4>
+        <p class="text-muted text-center mb-4">
+            Comparing your firewall configuration against the selected template
+        </p>
+        
         {% for section in results %}
-            <div class="mb-4">
-                <div class="d-flex align-items-center">
-                    <h5 class="mb-0">{{ section.name }}</h5>
-                    {% if section.matches %}
-                        <span class="ms-2 text-success" title="All items match"><strong>&#10003;</strong></span>
-                    {% else %}
-                        <span class="ms-2 text-danger" title="Some items do not match"><strong>&#10007;</strong></span>
-                    {% endif %}
+            <div class="card mb-4">
+                <div class="section-header">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <h5 class="mb-0">{{ section.name }}</h5>
+                        {% if section.matches %}
+                            <span class="text-success" title="All items match">
+                                <i class="fas fa-check-circle"></i> All Match
+                            </span>
+                        {% else %}
+                            <span class="text-danger" title="Some items do not match">
+                                <i class="fas fa-times-circle"></i> Mismatches Found
+                            </span>
+                        {% endif %}
+                    </div>
                 </div>
-                {% if not section.matches %}
-                    <ul class="list-group list-group-flush mt-2">
-                        {% for item in section['items'] %}
-                            {% if not item.match %}
-                                <li class="list-group-item d-flex align-items-center">
-                                    <span class="text-danger me-2">&#10007;</span>
-                                    <span><strong>{{ item.key }}</strong>: expected <code>{{ item.expected }}</code>, got <code>{{ item.actual }}</code></span>
-                                </li>
-                            {% endif %}
-                        {% endfor %}
-                    </ul>
+                
+                <div class="section-content">
+                    {% for item in section['items'] %}
+                        <div class="config-row {% if item.match %}match{% else %}mismatch{% endif %}">
+                            <div class="row align-items-center">
+                                <div class="col-md-2">
+                                    <span class="config-label">{{ item.key }}</span>
+                                </div>
+                                <div class="col-md-2">
+                                    <small class="text-muted d-block">Expected:</small>
+                                    {% if item.expected is boolean %}
+                                        <span class="status-badge {% if item.expected %}bg-success{% else %}bg-secondary{% endif %}">
+                                            {{ "Yes" if item.expected else "No" }}
+                                        </span>
+                                    {% else %}
+                                        <span class="config-value">{{ item.expected }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-2">
+                                    <small class="text-muted d-block">Actual:</small>
+                                    {% if item.actual is boolean %}
+                                        <span class="status-badge {% if item.actual %}bg-success{% else %}bg-secondary{% endif %}">
+                                            {{ "Yes" if item.actual else "No" }}
+                                        </span>
+                                    {% else %}
+                                        <span class="config-value">{{ item.actual }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-2">
+                                    {% if item.match %}
+                                        <span class="text-success">
+                                            <i class="fas fa-check"></i> Match
+                                        </span>
+                                    {% else %}
+                                        <span class="text-danger">
+                                            <i class="fas fa-times"></i> Mismatch
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4 text-end">
+                                    {% if not item.match %}
+                                        {% if section.name == 'Administration' %}
+                                            <button class="btn btn-warning fix-btn" 
+                                                    data-fix-type="{{ item.key }}"
+                                                    data-expected="{{ item.expected }}"
+                                                    data-actual="{{ item.actual }}"
+                                                    type="button">
+                                                <i class="fas fa-wrench me-1"></i>Fix
+                                            </button>
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+                
+                {% if section.name.startswith('Zone:') and not section.matches %}
+                    <div class="alert alert-warning m-3">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Zone Configuration Issues:</strong> This zone exists but some security settings don't match the template expectations.
+                    </div>
+                {% endif %}
+                
+                {% if section.name == 'All Zones Found' %}
+                    <div class="alert alert-info m-3">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>All Zones on Firewall:</strong> These are all the zones currently configured on your firewall.
+                    </div>
                 {% endif %}
             </div>
         {% endfor %}
+        
+        <div class="mt-4 text-center">
+            <a href="{{ url_for('management') }}" class="btn btn-primary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Management
+            </a>
+            <a href="{{ url_for('config_check') }}" class="btn btn-outline-secondary ms-2">
+                <i class="fas fa-refresh me-2"></i>Refresh Check
+            </a>
+            <button class="btn btn-info ms-2" onclick="openFixModal('firewall_name', 'Test Expected', 'Test Actual')">
+                <i class="fas fa-test me-2"></i>Test Modal
+            </button>
+
+        </div>
     </div>
 </div>
+
+<!-- Fix Modal -->
+<div class="modal fade" id="fixModal" tabindex="-1" aria-labelledby="fixModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="fixModalLabel">Fix Configuration</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="fixModalContent">
+                    <!-- Content will be dynamically loaded -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="applyFixBtn">Apply Fix</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentFixType = '';
+let currentExpectedValue = '';
+let currentActualValue = '';
+
+function openFixModal(fixType, expectedValue, actualValue) {
+    console.log('openFixModal called with:', { fixType, expectedValue, actualValue });
+    currentFixType = fixType;
+    currentExpectedValue = expectedValue;
+    currentActualValue = actualValue;
+    
+    let modalContent = '';
+    
+    if (fixType === 'firewall_name') {
+        modalContent = `
+            <div class="mb-3">
+                <label class="form-label fw-bold">Firewall Name</label>
+                <div class="mb-3 p-3 bg-light rounded">
+                    <small class="text-muted d-block">Current: <code class="text-danger">${actualValue}</code></small>
+                    <small class="text-muted d-block">Expected: <code class="text-success">${expectedValue}</code></small>
+                </div>
+                <input type="text" class="form-control" id="newValue" value="${expectedValue}" placeholder="Enter new firewall name" maxlength="32">
+                <div class="form-text">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Enter the correct firewall name (max 32 characters, no special characters like &lt; &gt; &amp; " ' \\ / | : ; * ?)
+                </div>
+            </div>
+        `;
+    } else if (fixType === 'http_port') {
+        modalContent = `
+            <div class="mb-3">
+                <label class="form-label fw-bold">HTTP Port</label>
+                <div class="mb-3 p-3 bg-light rounded">
+                    <small class="text-muted d-block">Current: <code class="text-danger">${actualValue}</code></small>
+                    <small class="text-muted d-block">Expected: <code class="text-success">${expectedValue}</code></small>
+                </div>
+                <input type="number" class="form-control" id="newValue" value="${expectedValue}" placeholder="Enter HTTP port" min="1" max="65535">
+                <div class="form-text">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Enter the HTTP management port (1-65535)
+                </div>
+            </div>
+        `;
+    } else if (fixType === 'https_port') {
+        modalContent = `
+            <div class="mb-3">
+                <label class="form-label fw-bold">HTTPS Port</label>
+                <div class="mb-3 p-3 bg-light rounded">
+                    <small class="text-muted d-block">Current: <code class="text-danger">${actualValue}</code></small>
+                    <small class="text-muted d-block">Expected: <code class="text-success">${expectedValue}</code></small>
+                </div>
+                <input type="number" class="form-control" id="newValue" value="${expectedValue}" placeholder="Enter HTTPS port" min="1" max="65535">
+                <div class="form-text">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Enter the HTTPS management port (1-65535)
+                </div>
+            </div>
+        `;
+    } else if (fixType === 'idle_logout_time') {
+        modalContent = `
+            <div class="mb-3">
+                <label class="form-label fw-bold">Idle Logout Time</label>
+                <div class="mb-3 p-3 bg-light rounded">
+                    <small class="text-muted d-block">Current: <code class="text-danger">${actualValue}</code></small>
+                    <small class="text-muted d-block">Expected: <code class="text-success">${expectedValue}</code></small>
+                </div>
+                <input type="number" class="form-control" id="newValue" value="${expectedValue}" placeholder="Enter idle logout time" min="1" max="1440">
+                <div class="form-text">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Enter the idle logout time in minutes (1-1440)
+                </div>
+            </div>
+        `;
+    }
+    
+    document.getElementById('fixModalContent').innerHTML = modalContent;
+    document.getElementById('fixModalLabel').textContent = `Fix ${fixType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}`;
+    
+    console.log('Modal content set, attempting to show modal...');
+    
+    // Show the modal using Bootstrap 5 syntax
+    const modalElement = document.getElementById('fixModal');
+    console.log('Modal element:', modalElement);
+    
+    if (modalElement) {
+        const modal = new bootstrap.Modal(modalElement, {
+            backdrop: true,
+            keyboard: true,
+            focus: true
+        });
+        console.log('Bootstrap modal instance created:', modal);
+        modal.show();
+        console.log('Modal.show() called');
+    } else {
+        console.error('Modal element not found!');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, setting up fix button listeners...');
+    
+    // Add event listeners for all fix buttons
+    const fixButtons = document.querySelectorAll('.fix-btn');
+    console.log(`Found ${fixButtons.length} fix buttons`);
+    
+    fixButtons.forEach(function(btn, index) {
+        console.log(`Setting up listener for button ${index + 1}:`, btn);
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Fix button clicked!');
+            const fixType = this.getAttribute('data-fix-type');
+            const expected = this.getAttribute('data-expected');
+            const actual = this.getAttribute('data-actual');
+            console.log('Fix data:', { fixType, expected, actual });
+            openFixModal(fixType, expected, actual);
+        });
+    });
+    
+    document.getElementById('applyFixBtn').addEventListener('click', function() {
+        let newValue = document.getElementById('newValue').value.trim();
+        
+        if (currentFixType === 'firewall_name') {
+            if (!newValue) {
+                showAlert('warning', 'Please enter a firewall name');
+                return;
+            }
+            
+            // Client-side validation
+            if (newValue.length > 32) {
+                showAlert('warning', 'Firewall name must be 32 characters or less');
+                return;
+            }
+            
+            const invalidChars = ['<', '>', '&', '"', "'", '\\', '/', '|', ':', ';', '*', '?'];
+            for (const char of invalidChars) {
+                if (newValue.includes(char)) {
+                    showAlert('warning', `Firewall name contains invalid character: ${char}`);
+                    return;
+                }
+            }
+        } else if (currentFixType === 'http_port' || currentFixType === 'https_port') {
+            if (!newValue) {
+                showAlert('warning', `Please enter a ${currentFixType.replace('_', ' ')}`);
+                return;
+            }
+            
+            const port = parseInt(newValue);
+            if (isNaN(port) || port < 1 || port > 65535) {
+                showAlert('warning', 'Port must be a number between 1 and 65535');
+                return;
+            }
+            
+            newValue = port; // Convert to number
+        } else if (currentFixType === 'idle_logout_time') {
+            if (!newValue) {
+                showAlert('warning', 'Please enter an idle logout time');
+                return;
+            }
+            
+            const time = parseInt(newValue);
+            if (isNaN(time) || time < 1 || time > 1440) {
+                showAlert('warning', 'Idle logout time must be a number between 1 and 1440 minutes');
+                return;
+            }
+            
+            newValue = time; // Convert to number
+        }
+        
+        // Show loading state
+        this.disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Applying...';
+        
+        // Make API call to fix configuration
+        fetch('/fix_configuration', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                fix_type: currentFixType,
+                new_value: newValue
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Close modal and show success message
+                const modalElement = document.getElementById('fixModal');
+                const modal = bootstrap.Modal.getInstance(modalElement);
+                modal.hide();
+                showAlert('success', data.message || 'Configuration updated successfully! Refreshing page...');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } else {
+                showAlert('danger', `Error: ${data.error}`);
+                // Reset button
+                this.disabled = false;
+                this.innerHTML = 'Apply Fix';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showAlert('danger', 'An error occurred while applying the fix');
+            // Reset button
+            this.disabled = false;
+            this.innerHTML = 'Apply Fix';
+        });
+    });
+});
+
+function showAlert(type, message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show alert-toast`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alertDiv);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+</script>
 {% endblock %} 
